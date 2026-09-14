@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>セストボール作戦ボード 3対3 v7</title>
+<style>
+  :root{
+    --bg:#eef2f7;
+    --panel:#ffffff;
+    --text:#172033;
+    --muted:#667085;
+    --line:#d7dee8;
+    --accent:#2563eb;
+    --red:#ef4444;
+    --blue:#3b82f6;
+    --yellow:#facc15;
+    --orange:#f59e0b;
+    --green:#10b981;
+    --header-h:44px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+    background:var(--bg);color:var(--text);overscroll-behavior:none;
+  }
+  button,input{font:inherit}
+  button{touch-action:manipulation}
+
+  .appShell{
+    height:100dvh;
+    min-height:100vh;
+    display:grid;
+    grid-template-rows:var(--header-h) auto minmax(0,1fr);
+    padding-top:env(safe-area-inset-top);
+    padding-left:env(safe-area-inset-left);
+    padding-right:env(safe-area-inset-right);
+    padding-bottom:env(safe-area-inset-bottom);
+    overflow:hidden;
+  }
+  header{
+    height:var(--header-h);
+    background:#0f172a;color:#fff;
+    display:flex;align-items:center;gap:10px;
+    padding:5px 10px;
+    min-width:0;
+  }
+  header h1{font-size:16px;margin:0;white-space:nowrap;flex:0 0 auto}
+  #strategyName{
+    min-width:80px;max-width:320px;flex:1;
+    height:32px;border:1px solid rgba(255,255,255,.25);border-radius:8px;
+    background:rgba(255,255,255,.12);color:#fff;padding:0 9px;
+  }
+  #strategyName::placeholder{color:rgba(255,255,255,.65)}
+  .headerBtn{
+    height:32px;padding:0 9px;border-radius:8px;border:1px solid rgba(255,255,255,.22);
+    background:rgba(255,255,255,.11);color:#fff;font-size:12px;font-weight:700;
+  }
+
+  /* 常時見える操作バー */
+  .quickPanel{
+    background:#fff;border-bottom:1px solid var(--line);
+    padding:6px 8px;
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr) auto;
+    grid-template-areas:"action modes colors";
+    gap:6px 8px;align-items:center;
+    box-shadow:0 2px 8px rgba(15,23,42,.06);
+    z-index:20;
+  }
+  .actionGroup{grid-area:action;display:flex;gap:5px;align-items:center}
+  .modeGroup{grid-area:modes;display:flex;gap:4px;align-items:center;justify-content:center;min-width:0}
+  .colorGroup{grid-area:colors;display:flex;gap:7px;align-items:center;justify-content:flex-end;min-width:0}
+  .groupLabel{font-size:11px;color:var(--muted);font-weight:700;white-space:nowrap}
+  .miniBtn{
+    height:34px;min-width:42px;padding:0 9px;border:1px solid #cfd7e3;border-radius:9px;
+    background:#fff;color:#172033;font-size:12px;font-weight:700;white-space:nowrap;
+  }
+  .miniBtn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .miniBtn.activeMode{background:#e8f0ff;border-color:#7aa5ff;color:#1548ad;box-shadow:inset 0 0 0 1px #7aa5ff}
+  .miniBtn.warn{background:#fff7ed;border-color:#fdba74;color:#c2410c}
+  .iconBtn{width:36px;padding:0;font-size:17px}
+  .toolBtn{width:38px;padding:0;display:inline-grid;place-items:center}
+  .toolIcon{width:22px;height:22px;display:block;pointer-events:none}
+  .saveStepBtn{display:inline-flex;align-items:center;gap:5px;padding-inline:10px}
+  .saveStepBtn .toolIcon{width:17px;height:17px}
+
+  .colorSelector{display:flex;align-items:center;gap:3px;padding:2px 4px;border:1px solid #d6dde8;border-radius:10px;background:#f8fafc}
+  .colorSelector + .colorSelector{margin-left:3px}
+  .teamName{display:inline-grid;place-items:center;min-width:31px;height:25px;padding:0 5px;border-radius:7px;font-size:10px;color:#fff;font-weight:900;white-space:nowrap;letter-spacing:.02em}
+  #myColorButtons .teamName{background:#2563eb}
+  #opponentColorButtons .teamName{background:#475569}
+  .swatch{
+    width:29px;height:29px;padding:0;border-radius:8px;border:2px solid transparent;
+    box-shadow:0 0 0 1px #b8c0cc inset;position:relative;
+  }
+  .swatch[data-color="red"]{background:var(--red)}
+  .swatch[data-color="blue"]{background:var(--blue)}
+  .swatch[data-color="yellow"]{background:var(--yellow)}
+  .swatch[data-color="white"]{background:#fff}
+  .swatch.activeChoice{outline:3px solid #111827;outline-offset:1px;transform:scale(.93)}
+  .swatch:disabled{opacity:.28}
+
+  .workspace{min-height:0;min-width:0;padding:8px;display:flex;overflow:hidden}
+  .courtCard{
+    flex:1;min-width:0;min-height:0;
+    background:#fff;border:1px solid var(--line);border-radius:12px;
+    padding:7px;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 5px 16px rgba(15,23,42,.06);overflow:hidden;
+  }
+  #court{
+    position:relative;
+    width:min(100%, calc((100dvh - 112px) * 1.6));
+    aspect-ratio:16/10;
+    max-height:100%;
+    background:
+      linear-gradient(90deg, transparent 49.6%, rgba(255,255,255,.9) 49.6%, rgba(255,255,255,.9) 50.4%, transparent 50.4%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.04), rgba(255,255,255,.04) 28px, rgba(0,0,0,.02) 29px),
+      #d7b56d;
+    border:4px solid #fff;outline:2px solid #334155;border-radius:9px;
+    overflow:hidden;touch-action:none;user-select:none;flex:0 1 auto;
+  }
+  .goalCircle{
+    position:absolute;width:20%;aspect-ratio:1;border:3px solid rgba(255,255,255,.92);
+    border-radius:50%;top:50%;transform:translateY(-50%);pointer-events:none;
+  }
+  .goalCircle.left{left:2%}.goalCircle.right{right:2%}
+  .goalPost{
+    position:absolute;width:4.5%;aspect-ratio:1;border:4px solid #fff;border-radius:50%;
+    top:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,.16);
+    box-shadow:0 0 0 2px rgba(15,23,42,.18) inset;pointer-events:none;
+  }
+  .goalPost.left{left:12%}.goalPost.right{left:88%}
+  .player,.ball{
+    position:absolute;transform:translate(-50%,-50%);display:grid;place-items:center;
+    touch-action:none;cursor:grab;z-index:5;
+  }
+  .player{
+    width:clamp(34px,5.2vw,52px);height:clamp(34px,5.2vw,52px);border-radius:50%;
+    color:#fff;font-weight:800;border:3px solid #fff;box-shadow:0 4px 10px rgba(0,0,0,.25);
+  }
+  .player.red{background:var(--red)}
+  .player.blue{background:var(--blue)}
+  .player.yellow{background:var(--yellow);color:#111827}
+  .player.white{background:#fff;color:#111827;border-color:#475569}
+  .player.selected{outline:4px solid var(--orange);outline-offset:2px}
+  .ball{
+    width:clamp(24px,3.3vw,32px);height:clamp(24px,3.3vw,32px);border-radius:50%;
+    background:#fff;border:3px solid #111827;font-size:15px;box-shadow:0 3px 8px rgba(0,0,0,.25)
+  }
+  #drawLayer{position:absolute;inset:0;width:100%;height:100%;z-index:4;pointer-events:none}
+
+  /* 縦向き：操作バーを2段にしてコートを最大化 */
+  @media (orientation:portrait), (max-width:760px){
+    :root{--header-h:42px}
+    header{padding:4px 7px;gap:6px}
+    header h1{font-size:14px}
+    #strategyName{height:30px;font-size:12px;max-width:none}
+    .headerBtn{height:30px;padding:0 7px;font-size:11px}
+    .quickPanel{
+      grid-template-columns:1fr auto;
+      grid-template-areas:
+        "action action"
+        "modes colors";
+      padding:5px 6px;gap:5px;
+    }
+    .actionGroup{justify-content:center}
+    .modeGroup{justify-content:flex-start;overflow:hidden}
+    .colorGroup{justify-content:flex-end;gap:4px}
+    .groupLabel{display:none}
+    .miniBtn{height:32px;padding:0 7px;font-size:11px;min-width:36px}
+    .iconBtn{width:33px}
+    .toolBtn{width:34px;min-width:34px}
+    .toolIcon{width:20px;height:20px}
+    .saveStepBtn{padding-inline:8px}
+    .teamName{min-width:29px;height:23px;font-size:9px;padding:0 4px}
+    .swatch{width:24px;height:24px;border-radius:7px}
+    .colorSelector{gap:2px;padding:2px 3px}
+    .workspace{padding:6px}
+    .courtCard{padding:5px}
+    #court{width:100%;max-height:100%;aspect-ratio:4/3}
+    .player{width:clamp(36px,8vw,50px);height:clamp(36px,8vw,50px)}
+    .ball{width:clamp(25px,5vw,31px);height:clamp(25px,5vw,31px)}
+  }
+
+  /* 横向きのiPadでは1段バー＋大きいコート */
+  @media (orientation:landscape) and (max-height:650px){
+    :root{--header-h:38px}
+    header{padding:3px 8px}
+    header h1{font-size:14px}
+    #strategyName{height:29px;font-size:12px}
+    .headerBtn{height:29px}
+    .quickPanel{padding:4px 7px}
+    .miniBtn{height:30px;padding:0 7px;font-size:11px;min-width:35px}
+    .swatch{width:25px;height:25px;border-radius:7px}
+    .teamName{min-width:29px;height:23px;font-size:9px}
+    .workspace{padding:5px}
+    .courtCard{padding:4px}
+    #court{width:min(100%, calc((100dvh - 80px) * 1.6));}
+    .player{width:clamp(32px,4.2vw,46px);height:clamp(32px,4.2vw,46px)}
+  }
+
+  /* かなり狭い画面では文字を短くする */
+  @media (max-width:620px){
+    .hideNarrow{display:none}
+    .colorGroup{gap:2px}
+    .colorSelector{gap:1px;padding:1px 2px}
+    .colorSelector + .colorSelector{margin-left:1px}
+    .teamName{display:inline-grid;min-width:26px;height:22px;padding:0 3px;font-size:9px}
+    .swatch{width:21px;height:22px;border-radius:6px}
+  }
+
+  .toast{
+    position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(16px);
+    background:rgba(15,23,42,.92);color:#fff;padding:8px 13px;border-radius:999px;font-size:12px;font-weight:700;
+    opacity:0;pointer-events:none;transition:.2s;z-index:99;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="appShell">
+  <header>
+    <h1>セストボール作戦ボード</h1>
+    <input id="strategyName" type="text" placeholder="作戦名（例：パス＆ゴー）" aria-label="作戦名">
+    <button id="saveBtn" class="headerBtn">作戦保存</button>
+    <button id="loadBtn" class="headerBtn">作戦読込</button>
+  </header>
+
+  <section class="quickPanel" aria-label="操作パネル">
+    <div class="actionGroup">
+      <button id="recordStepBtn" class="miniBtn primary saveStepBtn" title="この位置をセーブ" aria-label="この位置をセーブ">
+        <svg class="toolIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h12l2 2v16H5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 3v6h8V3M8 21v-7h8v7" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        <span>位置をセーブ</span>
+      </button>
+      <button id="playBtn" class="miniBtn">▶ <span class="hideNarrow">再生</span></button>
+      <button id="stopBtn" class="miniBtn iconBtn" title="停止" aria-label="停止">■</button>
+      <button id="undoStepBtn" class="miniBtn iconBtn" title="1つ戻す" aria-label="1つ戻す">↶</button>
+      <button id="resetBtn" class="miniBtn iconBtn" title="初期位置へ" aria-label="初期位置へ">↺</button>
+    </div>
+
+    <div class="modeGroup">
+      <button id="arrowModeBtn" class="miniBtn toolBtn activeMode" title="矢印を描く" aria-label="矢印モード">
+        <svg class="toolIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19L19 4M12 4h7v7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="lineModeBtn" class="miniBtn toolBtn" title="直線を描く" aria-label="直線モード">
+        <svg class="toolIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19L20 5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg>
+      </button>
+      <button id="freeModeBtn" class="miniBtn toolBtn" title="手書きで描く" aria-label="手書きモード">
+        <svg class="toolIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17c2-6 4 2 7-4s4 5 9-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M17 4l3 3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      </button>
+      <button id="eraseDrawBtn" class="miniBtn toolBtn warn" title="描いた線をすべて消す" aria-label="描画を消去">
+        <svg class="toolIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17l-3-3 9-9a2 2 0 0 1 3 0l3 3a2 2 0 0 1 0 3l-6 6H7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M11 17h9M9 9l6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <div class="colorGroup">
+      <div class="colorSelector" id="myColorButtons" aria-label="自分のチームの色" title="自分のチームカラー">
+        <span class="teamName" aria-hidden="true">自分</span>
+        <button class="swatch teamColorBtn" data-team="my" data-color="red" title="自分：赤" aria-label="自分のチームを赤"></button>
+        <button class="swatch teamColorBtn" data-team="my" data-color="blue" title="自分：青" aria-label="自分のチームを青"></button>
+        <button class="swatch teamColorBtn" data-team="my" data-color="yellow" title="自分：黄" aria-label="自分のチームを黄"></button>
+        <button class="swatch teamColorBtn" data-team="my" data-color="white" title="自分：白" aria-label="自分のチームを白"></button>
+      </div>
+      <div class="colorSelector" id="opponentColorButtons" aria-label="相手チームの色" title="相手チームカラー">
+        <span class="teamName" aria-hidden="true">相手</span>
+        <button class="swatch teamColorBtn" data-team="opponent" data-color="red" title="相手：赤" aria-label="相手チームを赤"></button>
+        <button class="swatch teamColorBtn" data-team="opponent" data-color="blue" title="相手：青" aria-label="相手チームを青"></button>
+        <button class="swatch teamColorBtn" data-team="opponent" data-color="yellow" title="相手：黄" aria-label="相手チームを黄"></button>
+        <button class="swatch teamColorBtn" data-team="opponent" data-color="white" title="相手：白" aria-label="相手チームを白"></button>
+      </div>
+    </div>
+  </section>
+
+  <main class="workspace">
+    <div class="courtCard">
+      <div id="court">
+        <div class="goalCircle left"></div><div class="goalCircle right"></div>
+        <div class="goalPost left"></div><div class="goalPost right"></div>
+        <svg id="drawLayer" viewBox="0 0 1000 625" preserveAspectRatio="none">
+          <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#f59e0b"></polygon>
+            </marker>
+          </defs>
+        </svg>
+        <div class="player red" data-id="r1" style="left:25%;top:30%">1</div>
+        <div class="player red" data-id="r2" style="left:25%;top:50%">2</div>
+        <div class="player red" data-id="r3" style="left:25%;top:70%">3</div>
+        <div class="player blue" data-id="b1" style="left:75%;top:30%">1</div>
+        <div class="player blue" data-id="b2" style="left:75%;top:50%">2</div>
+        <div class="player blue" data-id="b3" style="left:75%;top:70%">3</div>
+        <div class="ball" data-id="ball" style="left:44%;top:50%">●</div>
+      </div>
+    </div>
+  </main>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+(() => {
+  const court = document.getElementById('court');
+  const drawLayer = document.getElementById('drawLayer');
+  const items = [...document.querySelectorAll('.player, .ball')];
+  const nameInput = document.getElementById('strategyName');
+  const toastEl = document.getElementById('toast');
+
+  let mode = 'arrow';
+  let dragItem = null;
+  let selected = null;
+  let drawing = false;
+  let drawStart = null;
+  let preview = null;
+  let freePath = null;
+  let freePoints = [];
+  let steps = [];
+  let playing = false;
+  let playToken = 0;
+  let myColor = 'red';
+  let opponentColor = 'blue';
+  const initialState = captureState();
+
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(()=>toastEl.classList.remove('show'), 1400);
+  }
+
+  function pctPositionFromEvent(e){
+    const rect = court.getBoundingClientRect();
+    return {
+      x: Math.min(Math.max((e.clientX-rect.left)/rect.width*100,0),100),
+      y: Math.min(Math.max((e.clientY-rect.top)/rect.height*100,0),100)
+    };
+  }
+  function svgPositionFromEvent(e){
+    const p = pctPositionFromEvent(e);
+    return {x:p.x*10, y:p.y*6.25};
+  }
+  function captureState(){
+    const s={}; items.forEach(el=>s[el.dataset.id]={left:parseFloat(el.style.left),top:parseFloat(el.style.top)}); return s;
+  }
+  function applyState(state, animate=true){
+    items.forEach(el=>{
+      const p=state[el.dataset.id]; if(!p)return;
+      el.style.transition=animate?'left .55s ease, top .55s ease':'none';
+      el.style.left=p.left+'%'; el.style.top=p.top+'%';
+    });
+    if(animate)setTimeout(()=>items.forEach(el=>el.style.transition='none'),600);
+  }
+  function setMode(m){
+    mode=m;
+    ['arrowModeBtn','lineModeBtn','freeModeBtn'].forEach(id=>document.getElementById(id).classList.remove('activeMode'));
+    const map={arrow:'arrowModeBtn',line:'lineModeBtn',free:'freeModeBtn'};
+    document.getElementById(map[m]).classList.add('activeMode');
+  }
+  function selectItem(el){ if(selected)selected.classList.remove('selected'); selected=el; if(selected)selected.classList.add('selected'); }
+
+  items.forEach(el=>{
+    el.addEventListener('pointerdown',e=>{
+      e.preventDefault(); e.stopPropagation(); selectItem(el); dragItem=el;
+      try{el.setPointerCapture(e.pointerId)}catch{}
+    });
+    el.addEventListener('pointermove',e=>{
+      if(dragItem!==el)return;
+      const p=pctPositionFromEvent(e); el.style.left=p.x+'%'; el.style.top=p.y+'%';
+    });
+    const end=e=>{if(dragItem===el)dragItem=null;try{el.releasePointerCapture(e.pointerId)}catch{}};
+    el.addEventListener('pointerup',end); el.addEventListener('pointercancel',end);
+  });
+
+  function pointsToPath(points){
+    if(points.length<2)return '';
+    let d=`M ${points[0].x} ${points[0].y}`;
+    for(let i=1;i<points.length;i++) d+=` L ${points[i].x} ${points[i].y}`;
+    return d;
+  }
+
+  court.addEventListener('pointerdown',e=>{
+    if(e.target.closest('.player,.ball'))return;
+    e.preventDefault(); drawing=true;
+    const p=svgPositionFromEvent(e);
+    if(mode==='free'){
+      freePoints=[p];
+      freePath=document.createElementNS('http://www.w3.org/2000/svg','path');
+      freePath.setAttribute('fill','none');freePath.setAttribute('stroke','#c2410c');freePath.setAttribute('stroke-width','6');
+      freePath.setAttribute('stroke-linecap','round');freePath.setAttribute('stroke-linejoin','round');freePath.setAttribute('vector-effect','non-scaling-stroke');
+      freePath.classList.add('userDraw');drawLayer.appendChild(freePath);
+    }else{
+      drawStart=p;preview=document.createElementNS('http://www.w3.org/2000/svg','line');
+      preview.setAttribute('x1',p.x);preview.setAttribute('y1',p.y);preview.setAttribute('x2',p.x);preview.setAttribute('y2',p.y);
+      preview.setAttribute('stroke',mode==='arrow'?'#f59e0b':'#111827');preview.setAttribute('stroke-width','6');preview.setAttribute('stroke-linecap','round');preview.setAttribute('vector-effect','non-scaling-stroke');
+      if(mode==='arrow')preview.setAttribute('marker-end','url(#arrowhead)');preview.classList.add('userDraw');drawLayer.appendChild(preview);
+    }
+    try{court.setPointerCapture(e.pointerId)}catch{}
+  });
+  court.addEventListener('pointermove',e=>{
+    if(!drawing)return; const p=svgPositionFromEvent(e);
+    if(mode==='free'&&freePath){freePoints.push(p);freePath.setAttribute('d',pointsToPath(freePoints));}
+    else if(preview){preview.setAttribute('x2',p.x);preview.setAttribute('y2',p.y);}
+  });
+  function endDrawing(e){drawing=false;preview=null;freePath=null;freePoints=[];try{court.releasePointerCapture(e.pointerId)}catch{}}
+  court.addEventListener('pointerup',endDrawing);court.addEventListener('pointercancel',endDrawing);
+
+  document.getElementById('arrowModeBtn').onclick=()=>setMode('arrow');
+  document.getElementById('lineModeBtn').onclick=()=>setMode('line');
+  document.getElementById('freeModeBtn').onclick=()=>setMode('free');
+  document.getElementById('eraseDrawBtn').onclick=()=>{drawLayer.querySelectorAll('.userDraw').forEach(el=>el.remove());toast('線を消しました')};
+
+  document.getElementById('recordStepBtn').onclick=()=>{steps.push(captureState());toast(`動き ${steps.length} を記録しました`)};
+  document.getElementById('undoStepBtn').onclick=()=>{
+    if(!steps.length){toast('記録はまだありません');return}
+    steps.pop();applyState(steps.length?steps[steps.length-1]:initialState,false);toast('1つ戻しました');
+  };
+  document.getElementById('resetBtn').onclick=()=>{
+    playing=false;playToken++;applyState(initialState,false);steps=[];drawLayer.querySelectorAll('.userDraw').forEach(el=>el.remove());selectItem(null);toast('初期状態に戻しました');
+  };
+  document.getElementById('stopBtn').onclick=()=>{playing=false;playToken++;toast('停止しました')};
+  document.getElementById('playBtn').onclick=async()=>{
+    if(!steps.length){toast('先に位置をセーブしてください');return}
+    playing=true;const token=++playToken;applyState(initialState,false);await wait(300);
+    for(const state of steps){if(!playing||token!==playToken)return;applyState(state,true);await wait(700)}
+    playing=false;
+  };
+  function wait(ms){return new Promise(r=>setTimeout(r,ms))}
+
+  const allColors=['red','blue','yellow','white'];
+  function applyTeamColors(){
+    document.querySelectorAll('[data-id^="r"]').forEach(el=>{allColors.forEach(c=>el.classList.remove(c));el.classList.add(myColor)});
+    document.querySelectorAll('[data-id^="b"]').forEach(el=>{allColors.forEach(c=>el.classList.remove(c));el.classList.add(opponentColor)});
+    document.querySelectorAll('.teamColorBtn').forEach(btn=>{
+      const active=(btn.dataset.team==='my'&&btn.dataset.color===myColor)||(btn.dataset.team==='opponent'&&btn.dataset.color===opponentColor);
+      btn.classList.toggle('activeChoice',active);
+      const other=btn.dataset.team==='my'?opponentColor:myColor;
+      btn.disabled=btn.dataset.color===other;
+    });
+  }
+  document.querySelectorAll('.teamColorBtn').forEach(btn=>btn.addEventListener('click',()=>{
+    const team=btn.dataset.team,color=btn.dataset.color;
+    if(team==='my')myColor=color;else opponentColor=color;applyTeamColors();
+  }));
+
+  document.getElementById('saveBtn').onclick=()=>{
+    const payload={name:nameInput.value||'',current:captureState(),steps,myColor,opponentColor};
+    localStorage.setItem('cestball_strategy_3v3',JSON.stringify(payload));toast('作戦を保存しました');
+  };
+  document.getElementById('loadBtn').onclick=()=>{
+    const raw=localStorage.getItem('cestball_strategy_3v3');if(!raw){toast('保存された作戦がありません');return}
+    try{
+      const p=JSON.parse(raw);nameInput.value=p.name||'';steps=p.steps||[];myColor=p.myColor||'red';opponentColor=p.opponentColor||'blue';
+      if(myColor===opponentColor)opponentColor=myColor==='blue'?'red':'blue';applyTeamColors();applyState(p.current||(steps[steps.length-1]||initialState),false);toast('作戦を読み込みました');
+    }catch{toast('保存データを読み込めませんでした')}
+  };
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')selectItem(null)});
+
+  setMode('move');applyTeamColors();
+})();
+</script>
+</body>
+</html>
